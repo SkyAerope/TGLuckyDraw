@@ -32,6 +32,7 @@ export async function getRandomMessage() {
     const lastMessageId = lastMessageResult[0].id;
 
     let randomMessage;
+    let messageTime;
     while (!randomMessage) {
       try {
         // 从 1 到最后一条消息的 ID 随机选择一个 ID
@@ -40,6 +41,7 @@ export async function getRandomMessage() {
 
         if (randomMessageResult.length > 0 && randomMessageResult[0].message) {
           randomMessage = randomMessageResult[0].message;
+          messageTime = randomMessageResult[0].date;
         }
       } catch (error: any) {
         if (error.message === "TypeError: Cannot read properties of undefined (reading 'message')") {
@@ -47,7 +49,7 @@ export async function getRandomMessage() {
         }
       }
     }
-    return randomMessage;
+    return { randomMessage, messageTime };
   } catch (error) {
     console.error(error);
     throw new Error('Failed to fetch a random message.');

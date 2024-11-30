@@ -1,0 +1,31 @@
+---
+import RefreshButton from '../components/RefreshButton.astro';
+import { getRandomMessage } from '../lib/telegram';
+
+let initialMessage = '无法获取消息，请稍后重试。';
+
+try {
+  initialMessage = await getRandomMessage();
+} catch (error) {
+  console.error(error);
+}
+---
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>随机 Telegram 消息</title>
+  </head>
+  <body>
+    <main>
+      <h1>随机 Telegram 消息</h1>
+      <p id="message">{initialMessage}</p>
+      <RefreshButton defaultMessage={initialMessage}>
+        抽卡一次
+      </RefreshButton>
+      <!-- <RefreshButton defaultMessage={initialMessage}>
+        连抽五次
+      </RefreshButton> -->
+    </main>
+  </body>
+</html>

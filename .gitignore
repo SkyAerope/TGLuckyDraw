@@ -141,3 +141,5 @@ dist
 
 # vercel
 .vercel
+# Local Telegram login session (never commit)
+.env.telegram

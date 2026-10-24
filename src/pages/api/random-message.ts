@@ -1,7 +1,7 @@
 import { getRandomMessage } from '../../lib/telegram';
 import type { APIRoute } from 'astro';
 
-export const GET: APIRoute = async ({ params, request }) => {
+export const GET: APIRoute = async () => {
   try {
     const message = await getRandomMessage();
     return new Response(JSON.stringify({ message }), {

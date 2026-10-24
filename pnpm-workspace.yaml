@@ -1,0 +1,11 @@
+# Astro's language service still requires the TypeScript 6 JavaScript API.
+# Keep the current compiler at the project root; isolate the checker API here.
+packageExtensions:
+  '@astrojs/language-server@*':
+    dependencies:
+      typescript: ^6.0.0
+
+allowBuilds:
+  bufferutil: true
+  es5-ext: true
+  utf-8-validate: true

@@ -11,6 +11,7 @@ import { fileURLToPath } from "node:url";
 import { Writable } from "node:stream";
 import readline from "node:readline";
 import dotenv from "dotenv";
+import { HttpsProxyAgent } from "https-proxy-agent";
 
 const apiId = 13098476;
 const apiHash = "0be3336d4f492ad5bd5a6fe66cdfc89d";
@@ -18,7 +19,6 @@ const apiHash = "0be3336d4f492ad5bd5a6fe66cdfc89d";
 // Resolve the implementations already shipped with the installed GramJS version.
 const telegramRequire = createRequire(createRequire(import.meta.url).resolve("telegram"));
 const { w3cwebsocket } = telegramRequire("websocket");
-const HttpsProxyAgent = telegramRequire("https-proxy-agent");
 const dcHosts = { 1: "pluto", 2: "venus", 3: "aurora", 4: "vesta", 5: "flora" };
 const localFile = ".env.telegram";
 
@@ -123,7 +123,7 @@ export async function main() {
   if (!checkOnly && (!process.stdin.isTTY || !process.stdout.isTTY)) {
     throw new Error("Login requires a user-controlled private terminal; no code was requested.");
   }
-  dotenv.config();
+  dotenv.config({ quiet: true });
   if (!checkOnly) {
     assertSessionDestination();
     try {

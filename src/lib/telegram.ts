@@ -2,28 +2,27 @@ import { TelegramClient } from 'telegram';
 import { StringSession } from 'telegram/sessions/index.js';
 import * as dotenv from 'dotenv';
 
-dotenv.config();
+dotenv.config({ quiet: true });
 
-const session = new StringSession(process.env.TELEGRAM_SESSION) || '';
 const apiId = Number(process.env.TELEGRAM_API_ID) || 13098476;
 const apiHash = process.env.TELEGRAM_API_HASH || '0be3336d4f492ad5bd5a6fe66cdfc89d';
 const channelId = process.env.TELEGRAM_CHANNEL_ID;
 
 export async function getRandomMessage() {
-  const client = new TelegramClient(session, apiId, apiHash, {
-    connectionRetries: 5,
-  });
-
-  await client.connect();
-
-  if (!session) {
+  // Reject missing configuration before opening a network connection.
+  if (!process.env.TELEGRAM_SESSION) {
     throw new Error('Please set the TELEGRAM_SESSION environment variable.');
   }
   if (!channelId) {
     throw new Error('Please set the TELEGRAM_CHANNEL_ID environment variable.');
   }
+  const session = new StringSession(process.env.TELEGRAM_SESSION);
+  const client = new TelegramClient(session, apiId, apiHash, {
+    connectionRetries: 5,
+  });
 
   try {
+    await client.connect();
     // 获取最后一条消息的 ID
     const lastMessageResult = await client.getMessages(channelId, { limit: 1 });
     if (lastMessageResult.length === 0) {

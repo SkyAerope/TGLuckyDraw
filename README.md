@@ -1,34 +1,59 @@
 # TGLuckyDraw
 随机频道消息？
 
-## 如何使用？
-    ### 1. 克隆仓库并安装依赖
-    ```bash
-    mv .env.example .env
-    pnpm i
-    ```
-    ### 2. 运行`TGLogin.js`文件，按照提示登录，获取`SessionString`，放入.env文件中
-    ```bash
-    node TGLogin.js
-    ```
-    ### 3. 构建并运行
-    ```bash
-    npm run build
-    npm run dev
-    ```
+## 环境和运行
 
-## Commands
+使用 Node.js **24.22.1**（当前稳定 24.x 补丁版）和 pnpm **12.15.0**。
+`.nvmrc`、`.node-version` 与 `package.json#engines` 声明相同的运行要求；
+Vercel 构建产物使用 `nodejs24.x`。本次升级不执行部署。
 
-All commands are run from the root of the project, from a terminal:
+```bash
+nvm install
+nvm use
+npm install --global pnpm@12.15.0
+pnpm install --frozen-lockfile
+```
 
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `npm install`             | Installs dependencies                            |
-| `npm run dev`             | Starts local dev server at `localhost:4321`      |
-| `npm run build`           | Build your production site to `./dist/`          |
-| `npm run preview`         | Preview your build locally, before deploying     |
-| `npm run astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `npm run astro -- --help` | Get help using the Astro CLI                     |
+通过运行环境或本地被忽略的 `.env` 配置 `TELEGRAM_CHANNEL_ID`。
+可用 `cp .env.example .env` 创建配置；模板仅含空值。不要提交任何本地环境文件。
+登录和 session 加载方法见下方“安全的 WSS 登录”。
+
+| 命令 | 用途 |
+| :--- | :--- |
+| `pnpm dev` | 启动本地开发服务器（默认 `localhost:4321`） |
+| `pnpm check` | 同步 Astro 类型、检查所有 Astro 文件，再用 TypeScript 7 检查 TS |
+| `pnpm build` | 执行完整类型检查并构建 Vercel 服务端产物 |
+| `pnpm astro --help` | 查看 Astro CLI 帮助 |
+| `node TGLogin.js --check` | 不登录的 WSS 匿名协议检查 |
+
+Vercel 适配器不支持 `astro preview`；本地验证使用 `pnpm dev`。
+仓库当前没有独立的自动化测试套件。无 `TELEGRAM_SESSION` 时页面显示失败提示，
+API 返回 500；服务会在联网之前拒绝缺失 session 的请求。
+
+## 本次依赖迁移
+
+所有原有直接依赖均更新至 npm `latest` 稳定版本，含 Astro 7、适配器 11、
+dotenv 18、TypeScript 7；锁文件同时刷新兼容范围内的传递依赖。
+`@types/node` 跟随该包最新稳定版（26），它只是开发类型包；实际运行版本仍限定为 24。
+
+- 按 Astro 6/7 指南将 Vercel 入口迁移为 `@astrojs/vercel`，修复提前闭合的 `<body>`。
+- TypeScript 7 的原生编译器不提供 Astro 检查器所需的旧 JS API。
+  因此 `pnpm check` 使用官方 `astro-check` CLI 和 `tsc --noEmit` 两项检查。
+  `.pnpmfile.cjs` 为检查器提供隔离的 TypeScript 6 API，
+  `pnpm-workspace.yaml` 为语言服务提供相同兼容依赖；项目直接依赖保持 TypeScript 7，
+  不修改 `node_modules`、不关闭诊断、不放宽 peer 规则。
+- 新 GramJS 不再提供旧登录脚本借用的代理依赖，显式添加最新版
+  `https-proxy-agent` 并使用具名导入；保留原有 WSS、代理和 session 保护行为。
+- dotenv 显式使用 `quiet: true`；pnpm 仅允许三个已有依赖所需的安装脚本。
+
+官方迁移资料：
+
+- [Astro 6](https://docs.astro.build/en/guides/upgrade-to/v6/)、[Astro 7](https://docs.astro.build/en/guides/upgrade-to/v7/)
+- [Vercel 适配器](https://docs.astro.build/en/guides/integrations-guide/vercel/)
+- [TypeScript 原生编译器变化](https://github.com/microsoft/typescript-go/blob/main/CHANGES.md)、[Astro 检查器支持进度](https://github.com/withastro/roadmap/discussions/1321)
+- [dotenv 变更记录](https://github.com/motdotla/dotenv/blob/master/CHANGELOG.md)
+- [https-proxy-agent API](https://github.com/TooTallNate/proxy-agents/tree/main/packages/https-proxy-agent)
+- [pnpm 12](https://pnpm.io/blog/releases/12.0)
 
 ## 安全的 WSS 登录
 
@@ -69,7 +94,7 @@ node TGLogin.js
 可使用 Node 的环境文件支持将保存的 session 加载为 `TELEGRAM_SESSION`：
 
 ```bash
-node --env-file=.env.telegram ./node_modules/astro/astro.js dev --host 127.0.0.1
+NODE_OPTIONS="--env-file=.env.telegram" pnpm dev --host 127.0.0.1
 ```
 
 已有进程环境中的同名变量优先，请避免旧的 `TELEGRAM_SESSION` 覆盖文件配置。

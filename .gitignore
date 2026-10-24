@@ -143,3 +143,10 @@ dist
 .vercel
 # Local Telegram login session (never commit)
 .env.telegram
+
+# Local environment and Telegram session variants
+.env.*
+!.env.example
+*.session
+*.session-*
+*.session.*

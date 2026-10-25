@@ -14,6 +14,31 @@ const messageTime = '';
   <link rel="icon" type="image/x-icon" href="favicon.svg">
 
   <style>
+    .message-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    #copy-message {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex: 0 0 40px;
+      width: 40px;
+      height: 40px;
+      padding: 8px;
+      border: 0;
+      border-radius: 50%;
+      color: inherit;
+      background: transparent;
+      cursor: pointer;
+    }
+    #copy-message:hover { background: rgba(128, 128, 128, 0.12); }
+    #copy-message:focus-visible { outline: 2px solid currentColor; }
+    #copy-message:disabled { opacity: 0.38; cursor: default; }
+    #copy-status { font-size: 12px; text-align: right; }
+    #copy-status:empty { display: none; }
     #message {
       white-space: pre-wrap;
       overflow-wrap: anywhere;
@@ -34,13 +59,13 @@ const messageTime = '';
   <!-- <link rel="stylesheet" href="https://unpkg.com/mdui@1.0.2/dist/css/mdui.min.css"> -->
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
   <link rel="stylesheet" href="./font.css">
-  <title>随机TG消息</title>
+  <title>随机消息</title>
   <!-- MDUI JavaScript -->
   <script src="https://unpkg.com/mdui@2.0.3/mdui.global.js"></script>
 </head>
 <body class="container">
   <mdui-top-app-bar>
-    <mdui-top-app-bar-title>随机TG消息</mdui-top-app-bar-title>
+    <mdui-top-app-bar-title>随机消息</mdui-top-app-bar-title>
     <div style="flex-grow: 1"></div>
     <mdui-tooltip content="查看 Github">
         <mdui-button-icon>
@@ -54,13 +79,48 @@ const messageTime = '';
   </mdui-top-app-bar>
   <p></p>
 
-  <mdui-card clickable class="center">
+  <mdui-card class="center">
     <div class="card-content mdui-prose">
-      <div class="card-primary-title">消息内容</div>
+      <div class="message-header">
+        <div class="card-primary-title">消息内容</div>
+        <button id="copy-message" type="button" aria-label="复制消息" title="复制消息" disabled>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+            <rect x="8" y="8" width="12" height="13" rx="2"></rect>
+            <path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"></path>
+          </svg>
+        </button>
+      </div>
+      <div id="copy-status" role="status" aria-live="polite"></div>
       <div id="messageTime" class="card-primary-subtitle">{messageTime}</div>
     <p role="status" aria-live="polite" id="message" class="text-center">{initialMessage}</p>
   </div>
   </mdui-card>
+
+    <script>
+      const copyButton = document.getElementById('copy-message') as HTMLButtonElement;
+      const message = document.getElementById('message') as HTMLElement;
+      const time = document.getElementById('messageTime') as HTMLElement;
+      const status = document.getElementById('copy-status') as HTMLElement;
+      let feedbackTimer: ReturnType<typeof setTimeout> | undefined;
+
+      new MutationObserver(() => {
+        copyButton.disabled = !time.textContent?.trim();
+        status.textContent = '';
+        clearTimeout(feedbackTimer);
+      }).observe(time, { childList: true, subtree: true, characterData: true });
+
+      copyButton.addEventListener('click', async () => {
+        if (copyButton.disabled) return;
+        try {
+          await navigator.clipboard.writeText(message.textContent || '');
+          status.textContent = '已复制';
+        } catch {
+          status.textContent = '复制失败，请长按或选中文字复制';
+        }
+        clearTimeout(feedbackTimer);
+        feedbackTimer = setTimeout(() => { status.textContent = ''; }, 3000);
+      });
+    </script>
 
     <main>
       <RefreshButton>

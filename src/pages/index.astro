@@ -21,6 +21,7 @@ const messageTime = '';
       gap: 16px;
     }
     #copy-message {
+      position: relative;
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -34,12 +35,40 @@ const messageTime = '';
       background: transparent;
       cursor: pointer;
     }
+    #copy-message svg {
+      position: absolute;
+      transform: scale(0);
+      opacity: 0;
+      transition: transform 160ms ease-in, opacity 160ms ease-in;
+    }
+    #copy-message .copy-icon {
+      transform: scale(1);
+      opacity: 1;
+      transition-delay: 160ms;
+      transition-timing-function: ease-out;
+    }
+    #copy-message.is-copied .copy-icon {
+      transform: scale(0);
+      opacity: 0;
+      transition-delay: 0ms;
+      transition-timing-function: ease-in;
+    }
+    #copy-message.is-copied .check-icon {
+      transform: scale(1);
+      opacity: 1;
+      transition-delay: 160ms;
+      transition-timing-function: ease-out;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      #copy-message svg { transition: none; }
+    }
     #copy-message:hover { background: rgba(128, 128, 128, 0.12); }
     #copy-message:focus-visible { outline: 2px solid currentColor; }
     #copy-message:disabled { opacity: 0.38; cursor: default; }
     #copy-status { font-size: 12px; text-align: right; }
     #copy-status:empty { display: none; }
     #message {
+      text-align: left;
       white-space: pre-wrap;
       overflow-wrap: anywhere;
     }
@@ -84,15 +113,18 @@ const messageTime = '';
       <div class="message-header">
         <div class="card-primary-title">消息内容</div>
         <button id="copy-message" type="button" aria-label="复制消息" title="复制消息" disabled>
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+          <svg class="copy-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
             <rect x="8" y="8" width="12" height="13" rx="2"></rect>
             <path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"></path>
+          </svg>
+          <svg class="check-icon" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="m5 12 4 4L19 6"></path>
           </svg>
         </button>
       </div>
       <div id="copy-status" role="status" aria-live="polite"></div>
       <div id="messageTime" class="card-primary-subtitle">{messageTime}</div>
-    <p role="status" aria-live="polite" id="message" class="text-center">{initialMessage}</p>
+    <p role="status" aria-live="polite" id="message">{initialMessage}</p>
   </div>
   </mdui-card>
 
@@ -103,22 +135,41 @@ const messageTime = '';
       const status = document.getElementById('copy-status') as HTMLElement;
       let feedbackTimer: ReturnType<typeof setTimeout> | undefined;
 
-      new MutationObserver(() => {
-        copyButton.disabled = !time.textContent?.trim();
-        status.textContent = '';
+      let copying = false;
+      let messageVersion = 0;
+
+      function resetFeedback() {
         clearTimeout(feedbackTimer);
+        copyButton.classList.remove('is-copied');
+        status.textContent = '';
+      }
+
+      new MutationObserver(() => {
+        messageVersion += 1;
+        copyButton.disabled = !time.textContent?.trim();
+        resetFeedback();
       }).observe(time, { childList: true, subtree: true, characterData: true });
 
       copyButton.addEventListener('click', async () => {
-        if (copyButton.disabled) return;
+        if (copyButton.disabled || copying) return;
+        copying = true;
+        const version = messageVersion;
         try {
           await navigator.clipboard.writeText(message.textContent || '');
-          status.textContent = '已复制';
+          if (version !== messageVersion) return;
+          clearTimeout(feedbackTimer);
+          status.textContent = '';
+          copyButton.classList.add('is-copied');
+          // Keep the fully expanded check visible for two seconds.
+          feedbackTimer = setTimeout(resetFeedback, 2320);
         } catch {
+          if (version !== messageVersion) return;
+          resetFeedback();
           status.textContent = '复制失败，请长按或选中文字复制';
+          feedbackTimer = setTimeout(resetFeedback, 3000);
+        } finally {
+          copying = false;
         }
-        clearTimeout(feedbackTimer);
-        feedbackTimer = setTimeout(() => { status.textContent = ''; }, 3000);
       });
     </script>
 

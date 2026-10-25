@@ -1,20 +1,7 @@
 ---
 import RefreshButton from '../components/RefreshButton.astro';
-import { getRandomMessage } from '../lib/telegram';
-
-let initialMessage = '无法获取消息，请稍后重试。';
-let messageTimeStamp = 0;
-let messageTime = '';
-
-try {
-  const result = await getRandomMessage();
-  initialMessage = result.randomMessage;
-  messageTimeStamp = result.messageTime ?? 0;
-  // 将时间戳转换为本地时间
-  messageTime = new Date(messageTimeStamp * 1000).toLocaleString();
-} catch (error) {
-  console.error(error);
-}
+const initialMessage = '正在加载消息…';
+const messageTime = '';
 ---
 <!DOCTYPE html>
 <html>
@@ -67,7 +54,7 @@ try {
     <div class="card-content mdui-prose">
       <div class="card-primary-title">消息内容</div>
       <div id="messageTime" class="card-primary-subtitle">{messageTime}</div>
-    <p id="message" class="text-center">{initialMessage}</p>
+    <p role="status" aria-live="polite" id="message" class="text-center">{initialMessage}</p>
   </div>
   </mdui-card>
 

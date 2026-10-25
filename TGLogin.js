@@ -1,9 +1,5 @@
 import { TelegramClient } from "telegram";
 import { StringSession } from "telegram/sessions/index.js";
-import { PromisedWebSockets } from "telegram/extensions/PromisedWebSockets.js";
-import { ConnectionTCPObfuscated } from "telegram/network/connection/TCPObfuscated.js";
-import { Logger } from "telegram/extensions/Logger.js";
-import { createRequire } from "node:module";
 import { constants, open, unlink, lstat } from "node:fs/promises";
 import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
@@ -11,15 +7,11 @@ import { fileURLToPath } from "node:url";
 import { Writable } from "node:stream";
 import readline from "node:readline";
 import dotenv from "dotenv";
-import { HttpsProxyAgent } from "https-proxy-agent";
+import { createWssClient as createSharedWssClient } from "./src/lib/telegram-wss.js";
 
 const apiId = 13098476;
 const apiHash = "0be3336d4f492ad5bd5a6fe66cdfc89d";
 
-// Resolve the implementations already shipped with the installed GramJS version.
-const telegramRequire = createRequire(createRequire(import.meta.url).resolve("telegram"));
-const { w3cwebsocket } = telegramRequire("websocket");
-const dcHosts = { 1: "pluto", 2: "venus", 3: "aurora", 4: "vesta", 5: "flora" };
 const localFile = ".env.telegram";
 
 export function assertSessionDestination(directory = process.cwd()) {
@@ -70,52 +62,7 @@ function privateQuestion(label) {
 }
 
 export function createWssClient(session, { apiId: configuredId = apiId, apiHash: configuredHash = apiHash } = {}) {
-  const proxy = process.env.HTTPS_PROXY || process.env.HTTP_PROXY;
-  if (!proxy) throw new Error("Configured HTTPS proxy is required; no direct fallback.");
-  const agent = new HttpsProxyAgent(proxy);
-  const sockets = new Set();
-  class ProxiedWebSockets extends PromisedWebSockets {
-    async connect(port, host, testServers = false) {
-      const allowed = Object.values(dcHosts).some(name => host === `${name}.web.telegram.org` || host === `${name}-1.web.telegram.org`);
-      if (!allowed || port !== 443 || testServers) throw new Error("Unexpected Telegram WSS endpoint.");
-      this.stream = Buffer.alloc(0);
-      this.canRead = new Promise(resolveRead => { this.resolveRead = resolveRead; });
-      this.closed = false;
-      this.website = this.getWebSocketLink(host, port, false);
-      this.client = new w3cwebsocket(this.website, "binary", "https://web.telegram.org", undefined, { agent, rejectUnauthorized: true });
-      sockets.add(this.client);
-      return new Promise((resolveSocket, reject) => {
-        this.client.onopen = () => { this.receive(); resolveSocket(this); };
-        this.client.onerror = () => reject(new Error("Telegram WSS connection failed."));
-        this.client.onclose = () => { this.closed = true; if (this.resolveRead) this.resolveRead(false); };
-      });
-    }
-  }
-  const initialDc = session.dcId || 4;
-  if (!dcHosts[initialDc]) throw new Error("Unsupported Telegram DC.");
-  session.setDC(initialDc, `${dcHosts[initialDc]}.web.telegram.org`, 443);
-  const client = new TelegramClient(session, configuredId, configuredHash, {
-    networkSocket: ProxiedWebSockets,
-    connection: ConnectionTCPObfuscated,
-    useWSS: true,
-    securityChecks: true,
-    connectionRetries: 1,
-    requestRetries: 1,
-    autoReconnect: false,
-    timeout: 5,
-    baseLogger: new Logger("none"),
-  });
-  // Node's getDC defaults to IPs. Force GramJS's built-in official web mapping,
-  // including any PHONE_MIGRATE transition during an explicitly requested login.
-  const getDC = client.getDC.bind(client);
-  client.getDC = (dcId, download = false) => getDC(dcId, download, true);
-  const forceClose = () => {
-    for (const socket of sockets) {
-      try { socket._client?.abort(); socket._connection?.drop(); socket.close(); } catch { /* cleanup only */ }
-    }
-    agent.destroy();
-  };
-  return { client, forceClose };
+  return createSharedWssClient(session, { apiId: configuredId, apiHash: configuredHash });
 }
 
 export async function main() {
